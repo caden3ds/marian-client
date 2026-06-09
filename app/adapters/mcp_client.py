@@ -59,7 +59,7 @@ def is_authenticated(account: str = "default") -> bool:
 
 def _client_metadata() -> OAuthClientMetadata:
     return OAuthClientMetadata(
-        client_name="Hardspace Finance",
+        client_name="Marian",
         redirect_uris=[REDIRECT_URI],
         grant_types=["authorization_code", "refresh_token"],
         response_types=["code"],
@@ -85,7 +85,7 @@ def _wait_for_callback(timeout: int = 300) -> tuple[str | None, str | None]:
             self.end_headers()
             self.wfile.write(
                 b"<html><body style='font-family:sans-serif'>"
-                b"<h2>Hardspace Finance</h2><p>Authentication complete. You can close this tab.</p>"
+                b"<h2>Marian</h2><p>Authentication complete. You can close this tab.</p>"
                 b"</body></html>"
             )
 

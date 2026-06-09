@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for the Hardspace Finance desktop client → single windowed .exe.
+# PyInstaller spec for the Marian desktop client → single windowed .exe.
 from PyInstaller.utils.hooks import collect_submodules, collect_all
 
 # keyring loads its backend dynamically; mcp/pydantic have dynamic imports.
@@ -38,7 +38,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="HardspaceFinance",
+    name="Marian",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

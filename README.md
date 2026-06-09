@@ -1,7 +1,7 @@
-# Hardspace Finance — Desktop Client
+# Marian — Desktop Client
 
-The open-source execution client for Hardspace Finance. It signs you in, streams the
-**impersonal trading signals** published by the Hardspace cloud, and executes them through
+The open-source execution client for Marian. It signs you in, streams the
+**impersonal trading signals** published by the Marian cloud, and executes them through
 **your own brokerage account** — either **Alpaca paper** (simulated, no real money) or
 **Robinhood** (live). You enter your own broker credentials in-app; nothing is bundled in.
 
@@ -28,7 +28,7 @@ On first launch open **⚙ Settings** to enter your Alpaca paper keys and/or con
 ## Build a standalone .exe
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
-# → dist/HardspaceFinance.exe  (single file, no Python needed)
+# → dist/Marian.exe  (single file, no Python needed)
 ```
 
 ## Tests

@@ -70,7 +70,7 @@ class Dashboard(QMainWindow):
         self.engine: ExecutionEngine | None = None
         self.bridge = StreamBridge()
         self.bridge.new_signal.connect(self._handle_signal)
-        self.setWindowTitle(f"Hardspace Finance — Thin Client v{__version__}")
+        self.setWindowTitle(f"Marian — Thin Client v{__version__}")
         self.resize(1100, 720)
 
         root = QWidget()

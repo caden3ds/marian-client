@@ -1,4 +1,4 @@
-# Hardspace Finance — Python thin client
+# Marian — Python thin client
 
 PySide6>=6.6           # desktop UI
 requests>=2.31         # Firebase Auth REST + Firestore REST (polling)

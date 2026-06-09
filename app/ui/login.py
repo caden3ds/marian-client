@@ -21,7 +21,7 @@ class LoginDialog(QDialog):
         super().__init__(parent)
         self.auth = auth
         self.session: Session | None = None
-        self.setWindowTitle("Hardspace Finance — Sign In")
+        self.setWindowTitle("Marian — Sign In")
         self.setMinimumWidth(360)
 
         layout = QVBoxLayout(self)

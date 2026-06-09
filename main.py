@@ -1,4 +1,4 @@
-"""Hardspace Finance thin client — entry point.
+"""Marian thin client — entry point.
 
 Flow: resume a stored session, else show the login dialog. On success, attach the session to
 the dashboard, which (if subscribed) starts polling today's signal stream. PAPER mode default.
