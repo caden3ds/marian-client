@@ -1,0 +1,12 @@
+# Hardspace Finance — Python thin client
+
+PySide6>=6.6           # desktop UI
+requests>=2.31         # Firebase Auth REST + Firestore REST (polling)
+keyring>=24.0          # secure refresh-token storage (OS keychain)
+
+# Chunk 3 decision: signals are delivered by short-polling the Firestore REST API with the
+# user's idToken (entitlement-gated by security rules), behind a swappable SignalStream
+# interface. pyrebase4/SSE streaming was rejected for reliability on modern Python.
+
+# MCP client for the Robinhood Trading MCP (Streamable HTTP + OAuth 2.0 / PKCE).
+mcp>=1.9

@@ -1,0 +1,28 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.python-version
+
+# PyInstaller build output (keep the spec)
+dist/
+build/
+*.spec
+!hardspace.spec
+
+# Runtime
+logs/
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+
+# Secrets / local config (the app stores credentials in the OS keychain, never here)
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
