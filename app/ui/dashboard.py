@@ -39,18 +39,15 @@ from app.signals import SignalStream
 from app.adapters.robinhood_adapter import PaperBroker
 from app.execution.engine import ExecutionEngine
 
+# Intraday strategies retired 2026-06-11 — the intrabar backtest measured no realized edge for
+# any of them after slippage, and the cloud no longer publishes them. Daily swing is the product.
 STRATEGY_LABELS = {
-    "gap_and_go": "Gap & Go",
-    "orb": "Opening Range Breakout",
-    "vwap_breakout": "VWAP Breakout",
-    "ema_cross": "9/21 EMA Cross",
-    "mean_reversion": "Mean Reversion",
+    "swing": "Swing (Donchian 40/20)",
+    "momentum": "Momentum (top-5 relative strength)",
 }
 
 PHASE_GROUPS = {
-    "Phase 1 — Opening Chaos (9:30–10:00)": ["gap_and_go", "orb"],
-    "Phase 2 — Mid-Day Trend (10:00–15:30)": ["vwap_breakout", "ema_cross"],
-    "Phase 3 — Closing Snap (15:30–16:00)": ["mean_reversion"],
+    "Daily Swing — overnight trend holds": ["swing", "momentum"],
 }
 
 TIER_LABELS = {MANUAL: "Manual approve", DELAYED: "Delayed (15s cancel)", AUTO: "Full auto"}
@@ -58,6 +55,7 @@ TIER_LABELS = {MANUAL: "Manual approve", DELAYED: "Delayed (15s cancel)", AUTO: 
 
 class StreamBridge(QObject):
     new_signal = Signal(dict)
+    new_opportunity = Signal(dict)
 
 
 class Dashboard(QMainWindow):
@@ -67,11 +65,13 @@ class Dashboard(QMainWindow):
         self.project_id = project_id
         self.session = None
         self.stream: SignalStream | None = None
+        self.opp_stream = None  # OpportunityStream | None
         self.engine: ExecutionEngine | None = None
         self.bridge = StreamBridge()
         self.bridge.new_signal.connect(self._handle_signal)
+        self.bridge.new_opportunity.connect(self._handle_opportunity)
         self.setWindowTitle(f"Marian — Thin Client v{__version__}")
-        self.resize(1100, 720)
+        self.resize(1100, 760)
 
         root = QWidget()
         layout = QVBoxLayout(root)
@@ -80,6 +80,7 @@ class Dashboard(QMainWindow):
         body.addWidget(self._build_strategy_panel(), 1)
         body.addWidget(self._build_signal_table(), 3)
         layout.addLayout(body)
+        layout.addWidget(self._build_opportunities_panel())
         layout.addWidget(self._build_blotter())
         self.setCentralWidget(root)
 
@@ -93,6 +94,9 @@ class Dashboard(QMainWindow):
             self._set_subscription(True)
             self.stream = stream or SignalStream(session, self.project_id, refresher=refresher)
             self.stream.start(self.bridge.new_signal.emit)
+            from app.opportunities import OpportunityStream  # local import: optional feature
+            self.opp_stream = OpportunityStream(session, self.project_id, refresher=refresher)
+            self.opp_stream.start(self.bridge.new_opportunity.emit)
             self.status_note.setText("Live — streaming today's signals.")
         else:
             self._set_subscription(False)
@@ -314,6 +318,12 @@ class Dashboard(QMainWindow):
         )
         self.table.horizontalHeader().setStretchLastSection(True)
         v.addWidget(self.table)
+        # Signals for disabled strategies are dropped, not queued — without this counter the app
+        # looks broken on days when only disabled strategies fire.
+        self.hidden_count = 0
+        self.hidden_label = QLabel("")
+        self.hidden_label.setStyleSheet("color: #888; font-size: 11px;")
+        v.addWidget(self.hidden_label)
         return panel
 
     def _build_blotter(self) -> QWidget:
@@ -328,8 +338,50 @@ class Dashboard(QMainWindow):
         v.addWidget(self.blotter_table)
         return panel
 
+    # ---- HIGH-RISK opportunities (earnings IV-crush, manual execution only) ----
+    def _build_opportunities_panel(self) -> QWidget:
+        panel = QGroupBox("⚠ Earnings IV-Crush — HIGH RISK · options · MANUAL execution only")
+        v = QVBoxLayout(panel)
+        note = QLabel(
+            "Playbook: 15:45–15:59 ET, SELL the front-expiry ATM call + BUY the same-strike "
+            "30–45d call (net debit). Exit BOTH legs ~09:45 ET the morning after the report. "
+            "GFD orders only. Cap total allocation at 6% of portfolio. Net debit at risk on an "
+            "outsized gap — not investment advice."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #b8860b; font-size: 11px;")
+        v.addWidget(note)
+        self.opp_table = QTableWidget(0, 7)
+        self.opp_table.setHorizontalHeaderLabels(
+            ["Ticker", "Spot", "Earnings", "When", "Term str %", "IV30/RV30", "Avg move %"]
+        )
+        self.opp_table.horizontalHeader().setStretchLastSection(True)
+        self.opp_table.setMaximumHeight(140)
+        v.addWidget(self.opp_table)
+        panel.setVisible(False)  # hidden until the first candidate arrives (most days: none)
+        self.opp_panel = panel
+        return panel
+
+    def _handle_opportunity(self, opp: dict) -> None:
+        if opp.get("kind") != "earnings_iv_crush":
+            return
+        self.opp_panel.setVisible(True)
+        row = self.opp_table.rowCount()
+        self.opp_table.insertRow(row)
+        for col, val in enumerate([
+            opp.get("ticker", "?"), str(opp.get("spot", "")), opp.get("earnings_date", ""),
+            opp.get("when", "?"), str(opp.get("ts_pct", "")), str(opp.get("iv_rv", "")),
+            str(opp.get("avg_earnings_move", "")),
+        ]):
+            self.opp_table.setItem(row, col, QTableWidgetItem(val))
+
     def _handle_signal(self, signal: dict) -> None:
         if signal.get("strategy") not in self.config.enabled_strategies:
+            self.hidden_count += 1
+            self.hidden_label.setText(
+                f"{self.hidden_count} signal(s) hidden by strategy toggles — "
+                f"enable strategies on the left to see new ones"
+            )
             return
         if not self.engine:
             self.add_preview_row(signal, None)  # show it; can't trade until a broker is set up
@@ -464,4 +516,6 @@ class Dashboard(QMainWindow):
     def closeEvent(self, event):  # noqa: N802
         if self.stream:
             self.stream.stop()
+        if self.opp_stream:
+            self.opp_stream.stop()
         super().closeEvent(event)

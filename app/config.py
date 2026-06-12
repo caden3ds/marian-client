@@ -65,18 +65,14 @@ class ClientConfig:
 
     def tier(self) -> str:
         return self.execution_tier or default_tier(self.mode)
-    # Defaults reflect the COST-AWARE backtest (net of ~3bps round-trip):
-    #   orb        +0.28R  (robust)      → ON
-    #   vwap_breakout +0.12R (thin)      → ON
-    #   gap_and_go  rare/untested        → ON (harmless; fires only on >2% gaps)
-    #   ema_cross  −0.56R net (tiny stop → costs dominate) → OFF
-    #   mean_reversion −0.19R net        → OFF
-    enabled_strategies: set[str] = field(
-        default_factory=lambda: {
-            "gap_and_go",
-            "orb",
-            "vwap_breakout",
-        }
-    )
+    # Strategy edge (measured — see cloud/signal-engine/scripts):
+    #   • Intraday (orb/vwap/ema/mean_rev): NO realized edge — intrabar replay shows ~26bps entry
+    #     slippage erases the apparent backtest edge (orb −0.31R real). OFF by default.
+    #   • swing (daily Donchian 40/20): VALIDATED — +1.93%/trade, PF 1.70, positive out-of-sample
+    #     over 5y/46 symbols (CAGR ~16% / Sharpe ~1.0), slippage-immune. The product's real edge.
+    #   • momentum (top-5 by 126d relative strength, monthly rebalance): VALIDATED — +8.6%/trade,
+    #     PF 3.85, positive OOS in both halves and across all parameter perturbations.
+    # Intraday strategies are retired (cloud no longer publishes them).
+    enabled_strategies: set[str] = field(default_factory=lambda: {"swing", "momentum"})
     risk: RiskConfig = field(default_factory=RiskConfig)
     account_number: str | None = None  # set after connecting Robinhood (Settings)
